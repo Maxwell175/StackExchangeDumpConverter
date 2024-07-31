@@ -47,4 +47,4 @@ Loading the StackOverflow data dump using a batch size of 1000000 takes 12 hr 6 
 This is a list of magnet links to torrent downloads for pre-converted dumps using this tool.
 
 * April 2024 Data Dump
-  * PostgreSQL: `magnet:?xt=urn:btih:f3af0353b052ca46d9e77825595cdcf577c2f51c&dn=stackexchange_postgresql&tr=http%3A%2F%2Fbt1.archive.org%3A6969%2Fannounce&tr=http%3A%2F%2Fbt2.archive.org%3A6969%2Fannounce`
+  * PostgreSQL: `magnet:?xt=urn:btih:b43c4de4a296da5ebc24ae1d91d421a4f59c25e8&dn=stackexchange_postgresql&tr=http%3A%2F%2Fbt2.archive.org%3A6969%2Fannounce&tr=http%3A%2F%2Fbt1.archive.org%3A6969%2Fannounce`
