@@ -16,10 +16,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
+using System.Reflection;
 using CommandLine;
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using StackExchangeDumpConverter.Destinations.EFCoreCommon;
 using StackExchangeDumpConverter.Dto;
@@ -161,6 +167,58 @@ public class PostgresDumpDestination : IDumpDestination
 
     public void Dispose()
     {
+        if (_dbContext != null)
+        {
+            Console.WriteLine("Adding circular foreign keys...");
+
+            var migrationBuilder = new MigrationBuilder("PostgreSQL");
+            foreach (var entityType in _dbContext.Model.GetEntityTypes())
+            {
+                // Add foreign keys based on attribute.
+                var foreignkeys = entityType.ClrType.GetProperties()
+                    .Select(prop => new
+                    {
+                        Attrib = prop.GetCustomAttribute<ForeignKeyAttribute>(),
+                        Prop = prop
+                    })
+                    .Where(p => p.Attrib != null)
+                    .ToList();
+                foreach (var foreignKey in foreignkeys)
+                {
+                    var principalType = Assembly.GetExecutingAssembly()
+                        .GetType($"{entityType.ClrType.Namespace}.{foreignKey.Attrib!.Name}")!;
+                    var principalEntityType = _dbContext.Model.FindEntityType(principalType)!;
+
+                    var dbColumnName = entityType.GetProperty(foreignKey.Prop.Name!).GetColumnName();
+                    var principalColumnName = principalEntityType.GetKeys().First().Properties.First().GetColumnName();
+                    
+                    // Now we only want the foreign keys that ARE circular.
+                    if (principalType != entityType.ClrType) continue;
+
+                    migrationBuilder.CreateIndex(
+                        name: $"ix_{entityType.GetTableName()}_{dbColumnName}",
+                        table: entityType.GetTableName()!,
+                        column: dbColumnName);
+
+                    migrationBuilder.AddForeignKey(
+                        name: $"fk_{entityType.GetTableName()}_{principalEntityType.GetTableName()}_{dbColumnName}",
+                        table: entityType.GetTableName()!,
+                        column: dbColumnName,
+                        principalTable: principalEntityType.GetTableName()!,
+                        principalColumn: principalColumnName,
+                        onDelete: ReferentialAction.Restrict);
+                }
+            }
+
+            var migrationSqlGenerator = _dbContext.GetService<IMigrationsSqlGenerator>();
+            var migrationExecutor = _dbContext.GetService<IMigrationCommandExecutor>();
+            var relationalConn = _dbContext.GetService<IRelationalConnection>();
+            migrationExecutor.ExecuteNonQuery(
+                migrationSqlGenerator.Generate(migrationBuilder.Operations,
+                    _dbContext.GetService<IDesignTimeModel>().Model), relationalConn);
+
+        }
+
         _dbContext?.Dispose();
     }
 
