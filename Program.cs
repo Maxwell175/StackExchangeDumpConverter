@@ -50,13 +50,15 @@ var parser = new CommandLineParser(args, StringComparison.InvariantCulture);
 
 var start = DateTime.Now;
 
-var destination =
-    (IDumpDestination) Activator.CreateInstance(destinationModuleMap[parser.GetValue("destination", 'd')!])!;
-destination.Init(parser);
+using (var destination =
+       (IDumpDestination) Activator.CreateInstance(destinationModuleMap[parser.GetValue("destination", 'd')!])!)
+{
+    destination.Init(parser);
 
-destination.WriteSeedData();
+    destination.WriteSeedData();
 
-new DumpReader(destination, parser.GetRemainder().ToArray()).ReadDump();
+    new DumpReader(destination, parser.GetRemainder().ToArray()).ReadDump();
+}
 
 Console.WriteLine($"Finished after {(DateTime.Now - start).TotalMinutes} minutes");
 

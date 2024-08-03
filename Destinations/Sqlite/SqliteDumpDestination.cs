@@ -16,11 +16,18 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
+using System.Reflection;
 using CommandLine;
 using EFCore.BulkExtensions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal;
 using StackExchangeDumpConverter.Destinations.EFCoreCommon;
 using StackExchangeDumpConverter.Dto;
 
@@ -57,12 +64,13 @@ public class SqliteDumpDestination : IDumpDestination
         var connStrBuilder = new SqliteConnectionStringBuilder
         {
             DataSource = cliArgs.GetValue("sqlite-dbpath"),
-            DefaultTimeout = 0
+            DefaultTimeout = 0,
+            ForeignKeys = false
         };
 
         _batchSize = Convert.ToInt32(cliArgs.GetValue("sqlite-batch-size") ?? "100000");
 
-        _dbContext = new StandardDbContext(new DbContextOptionsBuilder<StandardDbContext>()
+        _dbContext = new SqliteDbContext(new DbContextOptionsBuilder<StandardDbContext>()
             .LogTo(Console.WriteLine)
             .UseSqlite(connStrBuilder.ToString())
             .Options);
@@ -76,7 +84,7 @@ public class SqliteDumpDestination : IDumpDestination
         using var conn = _dbContext.Database.GetDbConnection();
         using var cmd = conn.CreateCommand();
         cmd.CommandText =
-            "PRAGMA synchronous=OFF; PRAGMA count_changes=OFF; PRAGMA journal_mode=MEMORY; PRAGMA temp_store=MEMORY;";
+            "PRAGMA synchronous=OFF; PRAGMA count_changes=OFF; PRAGMA cache_size=10000; PRAGMA journal_mode=OFF; PRAGMA temp_store=MEMORY; PRAGMA locking_mode=EXCLUSIVE; ";
         cmd.ExecuteNonQuery();
     }
 
@@ -158,9 +166,29 @@ public class SqliteDumpDestination : IDumpDestination
         if (_dbContext != null)
         {
             using var conn = _dbContext.Database.GetDbConnection();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "VACUUM;";
-            cmd.ExecuteNonQuery();
+            
+            Console.WriteLine("Adding foreign key indices...");
+            
+            foreach (var entityType in _dbContext.Model.GetEntityTypes())
+            {
+                // Add foreign keys based on attribute.
+                var foreignkeys = entityType.ClrType.GetProperties()
+                    .Select(prop => new
+                    {
+                        Attrib = prop.GetCustomAttribute<ForeignKeyAttribute>(),
+                        Prop = prop
+                    })
+                    .Where(p => p.Attrib != null)
+                    .ToList();
+                foreach (var foreignKey in foreignkeys)
+                {
+                    var dbColumnName = entityType.GetProperty(foreignKey.Prop.Name!).GetColumnName();
+                    
+                    using var fkCmd = conn.CreateCommand();
+                    fkCmd.CommandText = $"CREATE INDEX \"IX_{entityType.GetTableName()}_{dbColumnName}\" ON \"{entityType.GetTableName()}\" (\"{dbColumnName}\"); ";
+                    fkCmd.ExecuteNonQuery();
+                }
+            }
         }
 
         _dbContext?.Dispose();

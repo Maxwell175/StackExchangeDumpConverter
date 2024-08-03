@@ -44,6 +44,11 @@ public class StandardDbContext(DbContextOptions<StandardDbContext> options) : Db
     {
         base.OnModelCreating(modelBuilder);
 
+        CustomizeModelCreating(modelBuilder);
+    }
+
+    protected virtual void CustomizeModelCreating(ModelBuilder modelBuilder)
+    {
         // We disagree with some EF Core conventions, so lets tweak the result.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
