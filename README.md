@@ -47,4 +47,4 @@ Loading the StackOverflow data dump using a batch size of 1000000 takes 12 hr 6 
 This is a list of magnet links to torrent downloads for pre-converted dumps using this tool.
 
 * April 2024 Data Dump
-  * SQLite: `magnet:?xt=urn:btih:cb5cf8743bd18ca8dca5bb8f26a3248527f4461d&dn=stackexchange_sqlite&tr=http%3A%2F%2Fbt1.archive.org%3A6969%2Fannounce&tr=http%3A%2F%2Fbt2.archive.org%3A6969%2Fannounce`
+  * SQLite: `magnet:?xt=urn:btih:a9396346c837c087184158b4dbe60f7dedb77e06&dn=stackexchange_sqlite&tr=http%3A%2F%2Fbt1.archive.org%3A6969%2Fannounce&tr=http%3A%2F%2Fbt2.archive.org%3A6969%2Fannounce`
