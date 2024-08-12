@@ -48,6 +48,11 @@ if (args.Length == 0 || args.Contains("-h") || args.Contains("--help"))
 
 var parser = new CommandLineParser(args, StringComparison.InvariantCulture);
 
+AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) =>
+{
+    Console.WriteLine($"Error occured while processing {string.Join(' ', parser.GetRemainder())}");
+};
+
 var start = DateTime.Now;
 
 using (var destination =

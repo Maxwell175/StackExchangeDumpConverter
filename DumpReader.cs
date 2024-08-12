@@ -289,7 +289,16 @@ public class DumpReader
             if (matchingFile != null)
             {
                 Console.WriteLine($"Reading {file}...");
-                ReadDumpFile(matchingFile.Stream, action);
+                try
+                {
+                    ReadDumpFile(matchingFile.Stream, action);
+                }
+                catch
+                {
+                    Console.WriteLine($"Failed to read {file}");
+                    throw;
+                }
+
                 Destination.Flush();
                 return;
             }
