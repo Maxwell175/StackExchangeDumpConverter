@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using System.Text;
 using System.Xml;
 using LibArchive.Net;
 using StackExchangeDumpConverter.Destinations;
@@ -261,7 +262,7 @@ public class DumpReader
             if (matchingFile != null)
             {
                 Console.WriteLine($"Reading IDs from {file}...");
-                using var reader = XmlReader.Create(matchingFile.Stream);
+                using var reader = XmlReader.Create(matchingFile.Stream, new XmlReaderSettings { CheckCharacters = false });
                 reader.MoveToContent();
                 var ids = new HashSet<long>();
                 while (reader.Read())
@@ -307,7 +308,7 @@ public class DumpReader
 
     private void ReadDumpFile<T>(Stream fileStream, Action<T> callback)
     {
-        using var reader = XmlReader.Create(fileStream);
+        using var reader = XmlReader.Create(fileStream, new XmlReaderSettings { CheckCharacters = false });
         reader.MoveToContent();
 
         var constructor = typeof(T).GetConstructors().First();
@@ -347,6 +348,11 @@ public class DumpReader
                                     .Where(s => s.Length > 0)
                                     .ToArray());
                             }
+                            else if (realType == typeof(string))
+                            {
+                                // Need to get rid of garbage bytes.
+                                loadedData.Add(new string(value.Where(IsValidUtf8).ToArray()));
+                            }
                             else
                             {
                                 loadedData.Add(Convert.ChangeType(value, realType));
@@ -358,5 +364,19 @@ public class DumpReader
 
                     break;
             }
+    }
+
+    private bool IsValidUtf8(char c)
+    {
+        if (c == '\x00') return false;
+        try
+        {
+            Encoding.UTF8.GetByteCount([c]);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
