@@ -26,9 +26,8 @@ namespace StackExchangeDumpConverter;
 
 public class DumpReader
 {
-    private HashSet<long> _knownPostIds = new();
-
     private readonly HashSet<long> _knownUserIds = new();
+    private HashSet<long> _knownPostIds = new();
 
     public DumpReader(IDumpDestination destination, params string[] fileNames)
     {
@@ -176,16 +175,48 @@ public class DumpReader
             addedDummyPosts.Clear();
         }
 
-        FindAndReadDumpFile<Comment>("Comments.xml", Destination.StoreComment);
+        {
+            List<Comment> deferredComments = new();
+            FindAndReadDumpFile<Comment>("Comments.xml", c =>
+            {
+                if (!_knownPostIds.Contains(c.PostId))
+                {
+                    if (addedDummyPosts.Add(c.PostId))
+                        AddDummyPost(c.PostId, -1 /* Unknown */);
+                    deferredComments.Add(c);
+                }
+                else
+                {
+                    Destination.StoreComment(c);
+                }
+            });
+            deferredComments.ForEach(Destination.StoreComment);
+            Destination.Flush();
+            _knownPostIds.UnionWith(addedDummyPosts);
+            addedDummyPosts.Clear();
+        }
 
         {
             List<PostLink> deferredPostLinks = new();
             FindAndReadDumpFile<PostLink>("PostLinks.xml", pl =>
             {
+                var defer = false;
+                if (!_knownPostIds.Contains(pl.PostId))
+                {
+                    if (addedDummyPosts.Add(pl.PostId))
+                        AddDummyPost(pl.PostId, -1 /* Unknown */);
+                    defer = true;
+                }
+
                 if (!_knownPostIds.Contains(pl.RelatedPostId))
                 {
                     if (addedDummyPosts.Add(pl.RelatedPostId))
                         AddDummyPost(pl.RelatedPostId, -1 /* Unknown */);
+                    defer = true;
+                }
+
+                if (defer)
+                {
                     deferredPostLinks.Add(pl);
                 }
                 else
@@ -262,7 +293,8 @@ public class DumpReader
             if (matchingFile != null)
             {
                 Console.WriteLine($"Reading IDs from {file}...");
-                using var reader = XmlReader.Create(matchingFile.Stream, new XmlReaderSettings { CheckCharacters = false });
+                using var reader =
+                    XmlReader.Create(matchingFile.Stream, new XmlReaderSettings {CheckCharacters = false});
                 reader.MoveToContent();
                 var ids = new HashSet<long>();
                 while (reader.Read())
@@ -308,7 +340,7 @@ public class DumpReader
 
     private void ReadDumpFile<T>(Stream fileStream, Action<T> callback)
     {
-        using var reader = XmlReader.Create(fileStream, new XmlReaderSettings { CheckCharacters = false });
+        using var reader = XmlReader.Create(fileStream, new XmlReaderSettings {CheckCharacters = false});
         reader.MoveToContent();
 
         var constructor = typeof(T).GetConstructors().First();
