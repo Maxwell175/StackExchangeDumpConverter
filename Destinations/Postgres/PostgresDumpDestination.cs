@@ -73,7 +73,8 @@ public class PostgresDumpDestination : IDumpDestination
             Database = cliArgs.GetValue("postgres-db"),
             PersistSecurityInfo = true,
             IncludeErrorDetail = true,
-            CommandTimeout = 0
+            CommandTimeout = 0,
+            Timeout = 0
         };
 
         _batchSize = Convert.ToInt32(cliArgs.GetValue("postgres-batch-size") ?? "100000");
