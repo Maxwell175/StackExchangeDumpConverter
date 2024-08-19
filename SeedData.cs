@@ -111,6 +111,23 @@ public static class SeedData
         new VoteType(13, "Unknown"),
         new VoteType(14, "NominateModerator"),
         new VoteType(15, "ModeratorReview"),
-        new VoteType(16, "ApproveEditSuggestion")
+        new VoteType(16, "ApproveEditSuggestion"),
+        new VoteType(17, "Reaction1"),
+        new VoteType(18, "Helpful"),
+        new VoteType(19, "ThankYou"),
+        new VoteType(20, "WellWritten"),
+        new VoteType(21, "Follow"),
+        new VoteType(22, "Reaction2"),
+        new VoteType(23, "Reaction3"),
+        new VoteType(24, "Reaction4"),
+        new VoteType(25, "Reaction5"),
+        new VoteType(26, "Reaction6"),
+        new VoteType(27, "Reaction7"),
+        new VoteType(28, "Reaction8"),
+        new VoteType(29, "Outdated"),
+        new VoteType(30, "NotOutdated"),
+        new VoteType(31, "PreVote"),
+        new VoteType(32, "CollectiveDiscussionUpvote"),
+        new VoteType(33, "CollectiveDiscussionDownvote")
     ];
 }
